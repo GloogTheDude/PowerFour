@@ -7,33 +7,60 @@ sio = socketio.AsyncServer(async_mode='asgi') #ASG = asynchronous getway app
 app = socketio.ASGIApp(sio)
 clients={}#sid,name,idroom
 id_room =0
-rooms={0:0}
+rooms={0:[]}
+games={}#{id_room:0, task:play()}
 
 @sio.event
 async def connect(sid, environement, auth):
     global id_room
-    if rooms[id_room]==2:
-        id_room+=1
     clients[sid]={"user":auth.get('username'),"idroom":id_room}
-    rooms.setdefault(id_room,0)
-    rooms[id_room]+=1
+    rooms.setdefault(id_room,[])
+    rooms[id_room].append(sid)
     await sio.enter_room(sid, id_room)
-    print(f'{auth.get('username')} c\'est connecté à la room{id_room}')
+    print(f'{auth.get('username')} - {sid}c\'est connecté à la room{id_room}')
+    if len(rooms[id_room])==2:
+        games[id_room] = asyncio.create_task(play(id_room))
+        print("game start")
+        id_room+=1
 
 @sio.event
 async def disconnect(sid):
-    await sio.leave_room(sid, clients[sid]["id_room"])
-    print(f"{clients.get(sid)} c'est deconnecté de la room {clients[sid]["id_room"]}")
+    global id_room
+    id_room_to_disc = clients[sid]["idroom"]
+    for c in rooms[id_room_to_disc]:
+        await sio.leave_room(c, room = id_room_to_disc)
+        print(f"{clients.get(c)} - {c} c'est deconnecté de la room {id_room_to_disc}")
+    if id_room_to_disc == id_room:
+        id_room+=1
+    rooms.pop(id_room_to_disc)
+    games[id_room_to_disc].cancel()
+    games.pop(id_room_to_disc)
+    
     clients.pop(sid)
+    
 
-@sio.on('PLAY')
-async def play(player,col):
-    #if grid.add_chip(player,col):
-        #check if won
-        #pass play to other player
-        pass
-
-
+async def play(id_room):
+    p1,p2 = rooms[id_room]
+    grid = PowerFour()
+    is_won = False
+    turn=0
+    print("game start")
+    while not is_won:
+        await sio.event('ACTUALISE_GRID', id_room, grid)
+        if turn%2==1:
+            active_player = p2
+            no_player =2
+        else:
+            active_player = p1
+            no_player = 1
+        #get response active_player
+        await sio.call('ASK_COL', to=active_player)
+        col = 0
+        grid.add_chip(no_player, col)
+        if turn>=8:
+            is_won = grid.is_won()
+            print(f"player: {clients[active_player]} has won")
+        turn+=1
 
 
 if __name__ == '__main__':
