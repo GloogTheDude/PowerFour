@@ -41,12 +41,12 @@ async def disconnect(sid):
 
 async def play(id_room):
     p1,p2 = rooms[id_room]
-    grid = PowerFour()
+    game = PowerFour()
     is_won = False
     turn=0
     print("game start")
     while not is_won:
-        await sio.event('ACTUALISE_GRID', id_room, grid)
+        await sio.emit('SHOW_GRID', game.grid, room=id_room)
         if turn%2==1:
             active_player = p2
             no_player =2
@@ -55,11 +55,18 @@ async def play(id_room):
             no_player = 1
         #get response active_player
         await sio.call('ASK_COL', to=active_player)
-        col = 0
-        grid.add_chip(no_player, col)
-        if turn>=8:
-            is_won = grid.is_won()
-            print(f"player: {clients[active_player]} has won")
+
+        col = -1
+        while True:
+            col= await sio.call('ASK_COL')
+            if not(game.add_chip(no_player, col)):
+                await sio.emit('NOTIFY',{"username":"system", "message":"Col not valid"})
+                continue
+            break
+            
+        if turn>=7:
+            is_won = game.is_won()
+            await sio.emit('NOTIFY',{"username":"system", "message": f"player: {clients[active_player]} has won"})
         turn+=1
 
 

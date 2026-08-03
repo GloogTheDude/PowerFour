@@ -10,14 +10,14 @@ from typing import Any
 
 LOCAL_SERVER = 'http://127.0.0.1:8000'
 
-socket_client = socketio.AsyncClient()
+sio = socketio.AsyncClient()
 
 messages: list[dict[str,Any]] = []
 grid_win: curses.window|None = None
 msg_win: curses.window|None = None
 input_win: curses.window|None = None
 
-@sio.on('notify')
+@sio.on('NOTIFY')
 def handle_botify(message: dict[str,Any]):
     assert msg_win is not None
 
@@ -28,17 +28,17 @@ def handle_botify(message: dict[str,Any]):
         msg_win.addstr(f"{msg.get('username')}: {msg.get('message')}\n")
     msg_win.refresh()
 
-@sio.on('')
+@sio.on('SHOW_GRID')
 def handle_grid(grid):
-    assert grid_min is not None
+    assert grid_win is not None
 
     grid_win.clear()
     for line in grid:
         grid_win.addstr(f"{line}\n")
     grid_win.refresh()
 
-@sio.on('')
-async def handle_():
+@sio.on('ASK_COL')
+async def handle_ask_col():
     assert msg_win is not None
     assert input_win is not None
 
@@ -64,14 +64,14 @@ async def main(screen: curses.window):
     msg_win.scrollok(True)
     input_win = curses.newwin(1, curses.COLS, curses.LINES - 2, curses.COLS//2 + 1)
 
-    await socket_client.connect(
+    await sio.connect(
         'http://127.0.0.1:8000',
         'user'
     )
 
-    await socket_client.wait()
+    await sio.wait()
 
 if __name__ == "__client__":
-    load_dotenv()
+    #load_dotenv()
 
     curses.wrapper(lambda screen: asyncio.run(main(screen)))
