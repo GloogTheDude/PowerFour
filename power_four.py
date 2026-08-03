@@ -2,16 +2,21 @@ from const import WIDTH,HEIGHT,EMPTY_SYMB
 
 class PowerFour():
     def __init__(self):
-        self.grid = [[EMPTY_SYMB]*WIDTH]*HEIGHT
+        self.grid = [[EMPTY_SYMB for _ in range(WIDTH)]for _ in range(HEIGHT)] 
         self.last_chip_played = (-1,-1)
 
     def add_chip(self,no_player, col):
-        if 0<= col <WIDTH:
-            for j in range(WIDTH-1, 0,-1):
-                if self.grid[j,col] == EMPTY_SYMB:
-                    self.grid[j,col] = no_player
+        print(bool(0<= int(col) < WIDTH))
+        print(f"add chip({no_player}, {col})")
+        if bool(0<= int(col) <WIDTH):
+            for j in range(HEIGHT-1, -1,-1):
+                print(f"j={j}")
+                if self.grid[j][col] == EMPTY_SYMB:
+                    self.grid[j][col] = str(no_player)
                     self.last_chip_played = (j,col)
+                    print("valid")
                     return True
+        print('invalid')
         return False
 
     def is_won(self):

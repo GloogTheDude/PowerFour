@@ -1,5 +1,5 @@
 from enum import Enum
-WIDTH = 7
-HEIGHT = 6
+WIDTH:int = 7
+HEIGHT:int = 6
 
-EMPTY_SYMB = "#"
+EMPTY_SYMB:str = "#"

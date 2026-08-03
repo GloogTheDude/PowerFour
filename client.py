@@ -31,7 +31,6 @@ def handle_botify(message: dict[str,Any]):
 @sio.on('SHOW_GRID')
 def handle_grid(grid):
     assert grid_win is not None
-
     grid_win.clear()
     for line in grid:
         grid_win.addstr(f"{line}\n")
@@ -51,7 +50,7 @@ async def handle_ask_col():
         message = box.gather()
         input_win.clear()
         input_win.refresh()
-        return message
+        return int(message)
 
 async def main(screen: curses.window):
     global msg_win, input_win, grid_win
@@ -66,12 +65,12 @@ async def main(screen: curses.window):
 
     await sio.connect(
         'http://127.0.0.1:8000',
-        'user'
+        auth = {"username":"Test"}
     )
 
     await sio.wait()
 
-if __name__ == "__client__":
-    #load_dotenv()
-
-    curses.wrapper(lambda screen: asyncio.run(main(screen)))
+#if __name__ == "__client__":
+#load_dotenv()
+print ("lol")
+curses.wrapper(lambda screen: asyncio.run(main(screen)))
