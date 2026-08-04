@@ -37,7 +37,7 @@ def edit_validator(ch: str|int) -> str|int:
     return ch
 
 @sio.on('NOTIFY')
-def handle_botify(message: dict[str,Any] = None):
+def handle_nµotify(message: dict[str,Any] = None):
     assert msg_win is not None
     assert input_win is not None
 
