@@ -5,6 +5,10 @@ class PowerFour():
         self.grid = [[EMPTY_SYMB for _ in range(WIDTH)]for _ in range(HEIGHT)] 
         self.last_chip_played = (-1,-1)
 
+    def get_formated_last_chip(self):
+        x = self.last_chip_played[1]+1
+        y = 6 - (self.last_chip_played[0])
+        return (x,y)
     def add_chip(self,no_player, col):
         print(bool(0<= int(col) < WIDTH))
         print(f"add chip({no_player}, {col})")

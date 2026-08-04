@@ -13,7 +13,9 @@ games={}#{id_room:0, task:play()}
 @sio.event
 async def connect(sid, environement, auth):
     global id_room
+    #username = await sio.emit('LOGIN',{"username":"system", "message":"Please enter a username"})
     clients[sid]={"user":auth.get('username'),"idroom":id_room}
+    await sio.emit("NOTIFY",{"username":"system", "message":f"your username = {auth.get('username')}"},to=sid)
     rooms.setdefault(id_room,[])
     rooms[id_room].append(sid)
     await sio.enter_room(sid, id_room)
@@ -38,20 +40,25 @@ async def disconnect(sid):
     
     clients.pop(sid)
     
+    
 
 async def play(id_room):
     p1,p2 = rooms[id_room]
     game = PowerFour()
+    active_name=""
     is_won = False
     turn=0
     print("game start")
+    await sio.emit("NOTIFY",{"username":"system", "message":f"Game start! {clients[p1]["user"]} vs {clients[p2]["user"]}"},room= id_room)
     while not is_won:
-        await sio.emit('SHOW_GRID', game.grid, room=id_room)
+        await sio.emit('SHOW_GRID', game.grid, room=id_room) 
         if turn%2==1:
             active_player = p2
+            active_name = clients[p2]["user"]
             no_player =2
         else:
             active_player = p1
+            active_name = clients[p1]["user"]
             no_player = 1
         #get response active_player
         print(f"turn: {active_player}")
@@ -64,15 +71,16 @@ async def play(id_room):
             print(is_valid) 
             if not(is_valid):
                 print("col not valid")
-                await sio.emit('NOTIFY',{"username":"system", "message":"Col not valid"}, room = id_room)
+                await sio.emit('NOTIFY',{"username":"system", "message":"Col not valid"}, to = active_player)
                 continue
+            await sio.emit('NOTIFY',{"username":"system", "message":f"{active_name} played {game.get_formated_last_chip()}"}, room = id_room)
             break
             
         if turn>=6:
             is_won =game.is_won() 
             if is_won:
                 await sio.emit('SHOW_GRID', game.grid, room=id_room)
-                await sio.emit('NOTIFY',{"username":"system", "message": f"player: {clients[active_player]} has won"},room = id_room)
+                await sio.emit('NOTIFY',{"username":"system", "message": f"player: {active_name} has won"},room = id_room)
                 
         turn+=1
 

@@ -37,13 +37,14 @@ def edit_validator(ch: str|int) -> str|int:
     return ch
 
 @sio.on('NOTIFY')
-def handle_botify(message: dict[str,Any]):
+def handle_botify(message: dict[str,Any] = None):
     assert msg_win is not None
     assert input_win is not None
 
     msg_win.clear()
     msg_win.border()
-    messages.append(message)
+    if message:
+        messages.append(message)
 
     y=1
     for msg in messages:
@@ -191,20 +192,54 @@ async def main(screen: curses.window):
     grid_win.refresh()
 
     msg_win = curses.newwin(curses.LINES - 3, curses.COLS//2, 0, curses.COLS//2 + 1)
+    msg_win.idlok(True)
+    msg_win.scrollok(True)
     msg_win.border()
     msg_win.refresh()
 
-    msg_win.scrollok(True)
+    
     input_win = curses.newwin(1, curses.COLS//2, curses.LINES - 2, curses.COLS//2 + 1)
 
     await sio.connect(
         os.getenv('HOST'),
-        auth = {"username": os.getenv('AUTH_LOGIN')}
+        auth = {"username": await get_username()}
     )
 
     asyncio.create_task(listen_input())
 
     await sio.wait()
+
+async def get_username():
+    messages.append({"username":"client","message":"enter a user"})
+    refresh_message_window()
+    while True:
+        await asyncio.sleep(0.05)
+        input_win.nodelay(True)
+        curses.flushinp()
+        box = curses.textpad.Textbox(input_win)
+        box.edit()
+        message = box.gather().strip()
+        input_win.clear()
+        input_win.refresh()
+        if len(message)==0:
+            continue
+        try:
+            messages.append({"username":"client","message":f"user choose:{message}"})
+            refresh_message_window()
+            return message
+        except ValueError:
+            message.pop()
+            continue
+
+def refresh_message_window():
+    assert msg_win is not None
+    msg_win.clear()
+    msg_win.border()
+    y=1
+    for msg in messages:
+        msg_win.addstr(y, 1, f"{msg.get('username')}: {msg.get('message')}\n")
+        y+=1
+    msg_win.refresh()
 
 load_dotenv()
 curses.wrapper(lambda screen: asyncio.run(main(screen)))
