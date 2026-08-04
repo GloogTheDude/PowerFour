@@ -33,7 +33,6 @@ async def connect(sid, environement, auth):
 
 @sio.event
 async def disconnect(sid, reason):
-    #get id_room
     global id_room
     print(f"{clients[sid]["user"]} - {reason}")
     id_room_sid  = clients.pop(sid)["idroom"]
@@ -81,7 +80,24 @@ async def play(id_room):
 
         col = -1
         while True:
-            col=await sio.call('ASK_COL', to=active_player)
+            try:
+                col = await sio.call(
+                    "ASK_COL",
+                    to=active_player,
+                    timeout=10,
+                )
+            except socketio.exceptions.TimeoutError:
+                await sio.emit(
+                    "NOTIFY",
+                    {
+                        "username": "system",
+                        "message": f"{active_name} did'nt respond in time - disconnecting both player",
+                        
+                    },
+                    room=id_room,
+                )
+                await sio.disconnect(p2)
+                return
             print(col)
             is_valid =game.add_chip(no_player, col)
             print(is_valid) 
