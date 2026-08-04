@@ -1,26 +1,45 @@
-#import os
+import os
 import socketio # pyright: ignore[reportMissingTypeStubs]
 import asyncio
 import curses
+import curses.ascii
 import curses.textpad
+import threading
 
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 from typing import Any
 
-SERVER = 'https://button-retrieve-breeds-reference.trycloudflare.com'
-LOCAL_SERVER = 'http://127.0.0.1:8000'
-
-sio = socketio.AsyncClient()
+sio: socketio.AsyncClient = socketio.AsyncClient()
 
 messages: list[dict[str,Any]] = []
+
 grid_win: curses.window|None = None
 msg_win: curses.window|None = None
 input_win: curses.window|None = None
 
+input_lock: asyncio.Lock = asyncio.Lock()
+interrupt_flag = threading.Event()
+
+def is_integer(n: str):
+    try:
+        float(n)
+    except ValueError:
+        return False
+    else:
+        return float(n).is_integer()
+
+def edit_validator(ch: str|int) -> str|int:
+    if interrupt_flag.is_set():
+        return curses.ascii.BEL
+    if ch == -1:    # timeout, personne n'a tapé
+        return 0    # "if not ch: continue" dans edit() -> on reboucle proprement
+    return ch
+
 @sio.on('NOTIFY')
 def handle_botify(message: dict[str,Any]):
     assert msg_win is not None
+    assert input_win is not None
 
     msg_win.clear()
     msg_win.border()
@@ -32,12 +51,15 @@ def handle_botify(message: dict[str,Any]):
         y+=1
 
     msg_win.refresh()
+
+    # focus back on the input window
     input_win.clear()
     input_win.refresh()
 
 @sio.on('SHOW_GRID')
-def handle_grid(grid):
+def handle_grid(grid: list[list[str]]):
     assert grid_win is not None
+    assert input_win is not None
 
     colors = {'1': curses.COLOR_RED, '2': curses.COLOR_YELLOW}
 
@@ -103,6 +125,8 @@ def handle_grid(grid):
     grid_win.addch(y, x, '┘')
 
     grid_win.refresh()
+
+    # focus back on the input window
     input_win.clear()
     input_win.refresh()
 
@@ -110,17 +134,44 @@ def handle_grid(grid):
 async def handle_ask_col():
     assert msg_win is not None
     assert input_win is not None
+    interrupt_flag.set()        # signale la coupure au plus vite
 
-    while True:
+    async with input_lock:
         await asyncio.sleep(0.05)
-        input_win.nodelay(True)
-        curses.flushinp()
-        box = curses.textpad.Textbox(input_win)
-        box.edit()
-        message = box.gather()
+        interrupt_flag.clear()
+        loop = asyncio.get_event_loop()
+        input = 'None'
+        while not is_integer(input):
+            curses.flushinp()
+            box = curses.textpad.Textbox(input_win)
+            box.win.timeout(100)
+            input = await loop.run_in_executor(None, box.edit, edit_validator)
         input_win.clear()
         input_win.refresh()
-        return int(message)
+        return int(input)
+
+async def listen_input():
+    """ Handle textbx input when the player is waiting for his turn """
+    assert msg_win is not None
+    assert input_win is not None
+    loop = asyncio.get_event_loop()
+
+    while True:
+        if not input_lock.locked():
+            async with input_lock:
+                await asyncio.sleep(0.05)
+                loop = asyncio.get_event_loop()
+                box = curses.textpad.Textbox(input_win)
+                box.win.timeout(100)
+                msg = await loop.run_in_executor(None, box.edit, edit_validator)
+                if interrupt_flag.is_set():
+                    interrupt_flag.clear()
+                    continue
+                await sio.emit('NEW_MESSAGE', msg)
+                input_win.clear()
+                input_win.refresh()
+        else:
+            await asyncio.sleep(0.05)
 
 async def main(screen: curses.window):
     global msg_win, input_win, grid_win
@@ -144,16 +195,16 @@ async def main(screen: curses.window):
     msg_win.refresh()
 
     msg_win.scrollok(True)
-    input_win = curses.newwin(1, curses.COLS, curses.LINES - 2, curses.COLS//2 + 1)
+    input_win = curses.newwin(1, curses.COLS//2, curses.LINES - 2, curses.COLS//2 + 1)
 
     await sio.connect(
-        LOCAL_SERVER,
-        auth = {"username":"Test"}
+        os.getenv('HOST'),
+        auth = {"username": os.getenv('AUTH_LOGIN')}
     )
+
+    asyncio.create_task(listen_input())
 
     await sio.wait()
 
-#if __name__ == "__client__":
-#load_dotenv()
-print ("lol")
+load_dotenv()
 curses.wrapper(lambda screen: asyncio.run(main(screen)))
