@@ -5,6 +5,7 @@ import curses
 import curses.ascii
 import curses.textpad
 import threading
+from collections import deque
 
 from dotenv import load_dotenv
 
@@ -12,7 +13,7 @@ from typing import Any
 
 sio: socketio.AsyncClient = socketio.AsyncClient()
 
-messages: list[dict[str,Any]] = []
+messages: deque[str]|None = None
 
 grid_win: curses.window|None = None
 msg_win: curses.window|None = None
@@ -37,7 +38,7 @@ def edit_validator(ch: str|int) -> str|int:
     return ch
 
 @sio.on('NOTIFY')
-def handle_botify(message: dict[str,Any] = None):
+def handle_notify(message: dict[str,Any] = None):
     assert msg_win is not None
     assert input_win is not None
 
@@ -175,7 +176,7 @@ async def listen_input():
             await asyncio.sleep(0.05)
 
 async def main(screen: curses.window):
-    global msg_win, input_win, grid_win
+    global msg_win, input_win, grid_win, messages
 
     screen.clear()
     screen.refresh()
@@ -192,11 +193,10 @@ async def main(screen: curses.window):
     grid_win.refresh()
 
     msg_win = curses.newwin(curses.LINES - 3, curses.COLS//2, 0, curses.COLS//2 + 1)
-    msg_win.idlok(True)
-    msg_win.scrollok(True)
+    messages = deque([], maxlen=msg_win.getmaxyx()[0] - 2)
+
     msg_win.border()
     msg_win.refresh()
-
     
     input_win = curses.newwin(1, curses.COLS//2, curses.LINES - 2, curses.COLS//2 + 1)
 
@@ -228,7 +228,7 @@ async def get_username():
             refresh_message_window()
             return message
         except ValueError:
-            message.pop()
+            message.spop()
             continue
 
 def refresh_message_window():
