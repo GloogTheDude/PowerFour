@@ -85,5 +85,17 @@ async def play(id_room):
         turn+=1
 
 
+@sio.on('NEW_MESSAGE')
+async def treat_player_msg(sid,msg):
+    print(f"message recu: {msg}")
+    id_room = clients[sid]["idroom"]
+    username = clients[sid]["user"]
+    await sio.emit('NOTIFY',{
+        "username":username, 
+        "message": msg},
+    room = id_room)
+    
+    
+
 if __name__ == '__main__':
     uvicorn.run('main:app', host='127.0.0.1', port=8000, reload=True)
