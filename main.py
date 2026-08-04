@@ -69,9 +69,9 @@ async def play(id_room):
             break
             
         if turn>=6:
-            await sio.emit('SHOW_GRID', game.grid, room=id_room)
-            is_won = game.is_won()
-            await sio.emit('NOTIFY',{"username":"system", "message": f"player: {clients[active_player]} has won"},room = id_room)
+            if game.is_won():
+                await sio.emit('SHOW_GRID', game.grid, room=id_room)
+                await sio.emit('NOTIFY',{"username":"system", "message": f"player: {clients[active_player]} has won"},room = id_room)
         turn+=1
 
 
