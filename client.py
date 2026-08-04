@@ -41,6 +41,7 @@ def edit_validator(ch: str|int) -> str|int:
 def handle_notify(message: dict[str,Any] = None):
     assert msg_win is not None
     assert input_win is not None
+    colors = {'system':curses.COLOR_YELLOW, 'client':curses.COLOR_CYAN}
 
     msg_win.clear()
     msg_win.border()
@@ -49,7 +50,7 @@ def handle_notify(message: dict[str,Any] = None):
 
     y=1
     for msg in messages:
-        msg_win.addstr(y, 1, f"{msg.get('username')}: {msg.get('message')}\n")
+        msg_win.addstr(y, 1, f"{msg.get('username')}: {msg.get('message')}\n", curses.color_pair(colors.get(msg.get('username'), 0)))
         y+=1
 
     msg_win.refresh()
@@ -181,6 +182,9 @@ async def main(screen: curses.window):
     screen.clear()
     screen.refresh()
 
+    curses.init_pair(curses.COLOR_CYAN,
+                     curses.COLOR_CYAN,
+                     curses.COLOR_BLACK)
     curses.init_pair(curses.COLOR_RED,
                      curses.COLOR_RED,
                      curses.COLOR_BLACK)
@@ -237,7 +241,7 @@ def refresh_message_window():
     msg_win.border()
     y=1
     for msg in messages:
-        msg_win.addstr(y, 1, f"{msg.get('username')}: {msg.get('message')}\n")
+        msg_win.addstr(y, 1, f"{msg.get('username')}: {msg.get('message')}\n", curses.color_pair(curses.COLOR_CYAN))
         y+=1
     msg_win.refresh()
 
