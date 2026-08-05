@@ -191,7 +191,7 @@ async def handle_ask_col() -> int:
             interrupt_flag.clear()
             input = await _read_input()
 
-            if is_integer(input):
+            if not is_integer(input):
                 continue
 
             return int(input)
