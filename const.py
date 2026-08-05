@@ -1,4 +1,3 @@
-from enum import Enum
 WIDTH:int = 7
 HEIGHT:int = 6
 
