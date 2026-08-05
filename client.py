@@ -303,7 +303,8 @@ async def main(screen: curses.window):
 
     # Info window, simple text message to inform the client how to quit
     info_win = curses.newwin(1, curses.COLS//2, curses.LINES - 3, curses.COLS//2 + 1)
-    info_win.addstr(0, 0, "quit = Disconnect and close the client", curses.color_pair(curses.COLOR_YELLOW))
+    #info_win.addstr(0, 0, "quit = Disconnect and close the client", curses.color_pair(curses.COLOR_BLACK) | curses.A_BOLD)
+    info_win.addstr(0, 0, "quit = Disconnect and close the client", curses.color_pair(curses.COLOR_BLACK))
     info_win.refresh()
 
     # Input window, used to handle interactive input
